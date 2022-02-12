@@ -124,8 +124,14 @@ export default class Link extends Mark {
               }
               return false;
             },
-            click: (_view, event: MouseEvent) => {
-              if (event.target instanceof HTMLAnchorElement) {
+            click: (view, event: MouseEvent) => {
+              if (!(event.target instanceof HTMLAnchorElement)) {
+                return false;
+              }
+
+              // clicking a link while editing should show the link toolbar,
+              // clicking in read-only will navigate
+              if (!view.editable) {
                 const href =
                   event.target.href ||
                   (event.target.parentNode instanceof HTMLAnchorElement
@@ -137,15 +143,14 @@ export default class Link extends Mark {
                   event.stopPropagation();
                   event.preventDefault();
                   this.options.onClickHashtag(href, event);
-                  return true;
                 }
 
                 if (this.options.onClickLink) {
                   event.stopPropagation();
                   event.preventDefault();
                   this.options.onClickLink(href, event);
-                  return true;
                 }
+                return true;
               }
 
               return false;

@@ -23,8 +23,8 @@ const s3 = new AWS.S3({
   endpoint: AWS_S3_ACCELERATE_URL
     ? AWS_S3_ACCELERATE_URL
     : AWS_S3_UPLOAD_BUCKET_URL.includes(AWS_S3_UPLOAD_BUCKET_NAME)
-    ? undefined
-    : new AWS.Endpoint(AWS_S3_UPLOAD_BUCKET_URL),
+      ? undefined
+      : new AWS.Endpoint(AWS_S3_UPLOAD_BUCKET_URL),
   signatureVersion: "v4",
 });
 
@@ -115,6 +115,8 @@ export const getPresignedPost = (
     Fields: {
       key,
       acl,
+      "x-amz-expires": 3600,
+      "x-amz-signedheaders": "",
     },
     Expires: 3600,
   };
@@ -144,9 +146,8 @@ export const publicS3Endpoint = (isServerUpload?: boolean) => {
     return host;
   }
 
-  return `${host}/${
-    isServerUpload && isDocker ? "s3/" : ""
-  }${AWS_S3_UPLOAD_BUCKET_NAME}`;
+  return `${host}/${isServerUpload && isDocker ? "s3/" : ""
+    }${AWS_S3_UPLOAD_BUCKET_NAME}`;
 };
 
 export const uploadToS3FromBuffer = async (

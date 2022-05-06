@@ -115,8 +115,6 @@ export const getPresignedPost = (
     Fields: {
       key,
       acl,
-      "x-amz-expires": 3600,
-      "x-amz-signedheaders": "",
     },
     Expires: 3600,
   };

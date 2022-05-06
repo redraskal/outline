@@ -44,6 +44,9 @@ export const uploadFile = async (
     formData.append("file", file);
   }
 
+  formData.append("x-amz-expires", "3600");
+  formData.append("x-amz-signedheaders", "");
+
   // Using XMLHttpRequest instead of fetch because fetch doesn't support progress
   const xhr = new XMLHttpRequest();
   const success = await new Promise((resolve) => {

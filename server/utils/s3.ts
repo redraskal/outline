@@ -119,7 +119,6 @@ export const getPresignedPost = (
     Fields: {
       "Content-Disposition": "attachment",
       key,
-      acl,
     },
     Expires: 3600,
   };

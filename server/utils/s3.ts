@@ -26,8 +26,8 @@ const s3 = new AWS.S3({
   endpoint: AWS_S3_ACCELERATE_URL
     ? AWS_S3_ACCELERATE_URL
     : AWS_S3_UPLOAD_BUCKET_URL.includes(AWS_S3_UPLOAD_BUCKET_NAME)
-    ? undefined
-    : new AWS.Endpoint(AWS_S3_UPLOAD_BUCKET_URL),
+      ? undefined
+      : new AWS.Endpoint(AWS_S3_UPLOAD_BUCKET_URL),
   signatureVersion: "v4",
 });
 
@@ -70,9 +70,6 @@ export const makePolicy = (
         bucket: process.env.AWS_S3_UPLOAD_BUCKET_NAME,
       },
       ["starts-with", "$key", ""],
-      {
-        acl,
-      },
       // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
       ["content-length-range", 0, +process.env.AWS_S3_UPLOAD_MAX_SIZE],
       ["starts-with", "$Content-Type", contentType],
@@ -152,9 +149,8 @@ export const publicS3Endpoint = (isServerUpload?: boolean) => {
     return host;
   }
 
-  return `${host}/${
-    isServerUpload && isDocker ? "s3/" : ""
-  }${AWS_S3_UPLOAD_BUCKET_NAME}`;
+  return `${host}/${isServerUpload && isDocker ? "s3/" : ""
+    }${AWS_S3_UPLOAD_BUCKET_NAME}`;
 };
 
 export const uploadToS3FromBuffer = async (

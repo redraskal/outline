@@ -7,8 +7,6 @@ type UploadOptions = {
   name?: string;
   /** The document that this file was uploaded in, if any */
   documentId?: string;
-  /** Whether the file should be public in cloud storage */
-  public?: boolean;
   /** Callback will be passed a number between 0-1 as upload progresses */
   onProgress?: (fractionComplete: number) => void;
 };
@@ -21,7 +19,6 @@ export const uploadFile = async (
 ) => {
   const name = file instanceof File ? file.name : options.name;
   const response = await client.post("/attachments.create", {
-    public: options.public,
     documentId: options.documentId,
     contentType: file.type,
     size: file.size,

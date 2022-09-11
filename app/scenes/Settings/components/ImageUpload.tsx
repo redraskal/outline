@@ -67,7 +67,6 @@ class ImageUpload extends React.Component<RootStore & Props> {
       });
       const attachment = await uploadFile(compressed, {
         name: this.file.name,
-        public: true,
       });
       this.props.onSuccess(attachment.url);
     } catch (err) {

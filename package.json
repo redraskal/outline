@@ -59,7 +59,7 @@
     "@getoutline/y-prosemirror": "^1.0.18",
     "@hocuspocus/provider": "^1.0.0-alpha.36",
     "@hocuspocus/server": "^1.0.0-alpha.102",
-    "@joplin/turndown-plugin-gfm": "^1.0.44",
+    "@joplin/turndown-plugin-gfm": "^1.0.45",
     "@juggle/resize-observer": "^3.3.1",
     "@outlinewiki/koa-passport": "^4.2.1",
     "@outlinewiki/passport-azure-ad-oauth2": "^0.1.0",

@@ -2,6 +2,7 @@ import { Table, TBody, TR, TD } from "oy-vey";
 import * as React from "react";
 import theme from "@shared/styles/theme";
 import { twitterUrl } from "@shared/utils/urlHelpers";
+import env from "@server/env";
 
 type Props = {
   unsubscribeUrl?: string;
@@ -35,8 +36,8 @@ export default ({ unsubscribeUrl }: Props) => {
       <TBody>
         <TR>
           <TD style={footerStyle}>
-            <a href={process.env.URL} style={linkStyle}>
-              Outline
+            <a href={env.URL} style={linkStyle}>
+              {env.APP_NAME}
             </a>
             <a href={twitterUrl()} style={externalLinkStyle}>
               Twitter

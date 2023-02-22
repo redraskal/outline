@@ -15,8 +15,8 @@ import usePageVisibility from "~/hooks/usePageVisibility";
 import useStores from "~/hooks/useStores";
 import useToasts from "~/hooks/useToasts";
 import MultiplayerExtension from "~/multiplayer/MultiplayerExtension";
+import Logger from "~/utils/Logger";
 import { supportsPassiveListener } from "~/utils/browser";
-import Logger from "~/utils/logger";
 import { homePath } from "~/utils/routeHelpers";
 
 type Props = EditorProps & {
@@ -139,8 +139,8 @@ function MultiplayerEditor({ onSynced, ...props }: Props, ref: any) {
     });
 
     if (debug) {
-      provider.on("status", (ev: ConnectionStatusEvent) =>
-        Logger.debug("collaboration", "status", ev)
+      provider.on("close", (ev: MessageEvent) =>
+        Logger.debug("collaboration", "close", ev)
       );
       provider.on("message", (ev: MessageEvent) =>
         Logger.debug("collaboration", "incoming", {
@@ -271,6 +271,7 @@ function MultiplayerEditor({ onSynced, ...props }: Props, ref: any) {
     <>
       {showCache && (
         <Editor
+          embedsDisabled={props.embedsDisabled}
           defaultValue={props.defaultValue}
           extensions={props.extensions}
           readOnly
@@ -286,7 +287,8 @@ function MultiplayerEditor({ onSynced, ...props }: Props, ref: any) {
         style={
           showCache
             ? {
-                display: "none",
+                opacity: 0,
+                pointerEvents: "none",
               }
             : undefined
         }

@@ -1,8 +1,9 @@
 import { Table, TBody, TR, TD } from "oy-vey";
 import * as React from "react";
+import env from "@server/env";
 import EmptySpace from "./EmptySpace";
 
-const url = process.env.CDN_URL || process.env.URL;
+const url = env.CDN_URL ?? env.URL;
 
 export default () => {
   return (
@@ -12,8 +13,12 @@ export default () => {
           <TD>
             <EmptySpace height={40} />
             <img
-              alt="Outline"
-              src={`${url}/email/header-logo.png`}
+              alt={env.APP_NAME}
+              src={
+                env.isCloudHosted()
+                  ? `${url}/email/header-logo.png`
+                  : "cid:header-image"
+              }
               height="48"
               width="48"
             />

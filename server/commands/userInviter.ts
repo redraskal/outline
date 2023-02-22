@@ -1,12 +1,12 @@
-import invariant from "invariant";
 import { uniqBy } from "lodash";
 import { Role } from "@shared/types";
 import InviteEmail from "@server/emails/templates/InviteEmail";
-import Logger from "@server/logging/logger";
+import env from "@server/env";
+import Logger from "@server/logging/Logger";
 import { User, Event, Team } from "@server/models";
 import { UserFlag } from "@server/models/User";
 
-type Invite = {
+export type Invite = {
   name: string;
   email: string;
   role: Role;
@@ -24,8 +24,7 @@ export default async function userInviter({
   sent: Invite[];
   users: User[];
 }> {
-  const team = await Team.findByPk(user.teamId);
-  invariant(team, "team not found");
+  const team = await Team.findByPk(user.teamId, { rejectOnEmpty: true });
 
   // filter out empties and obvious non-emails
   const compactedInvites = invites.filter(
@@ -72,6 +71,7 @@ export default async function userInviter({
       name: "users.invite",
       actorId: user.id,
       teamId: user.teamId,
+      userId: newUser.id,
       data: {
         email: invite.email,
         name: invite.name,
@@ -89,11 +89,11 @@ export default async function userInviter({
       teamUrl: team.url,
     });
 
-    if (process.env.NODE_ENV === "development") {
+    if (env.ENVIRONMENT === "development") {
       Logger.info(
         "email",
         `Sign in immediately: ${
-          process.env.URL
+          env.URL
         }/auth/email.callback?token=${newUser.getEmailSigninToken()}`
       );
     }

@@ -1,5 +1,5 @@
-import invariant from "invariant";
 import * as React from "react";
+import env from "@server/env";
 import { Collection } from "@server/models";
 import BaseEmail from "./BaseEmail";
 import Body from "./components/Body";
@@ -36,7 +36,10 @@ export default class CollectionNotificationEmail extends BaseEmail<
     const collection = await Collection.scope("withUser").findByPk(
       collectionId
     );
-    invariant(collection, "Collection not found");
+    if (!collection) {
+      return false;
+    }
+
     return { collection };
   }
 
@@ -54,7 +57,7 @@ ${collection.name}
 
 ${collection.user.name} ${eventName} the collection "${collection.name}"
 
-Open Collection: ${process.env.URL}${collection.url}
+Open Collection: ${env.URL}${collection.url}
 `;
   }
 
@@ -75,7 +78,7 @@ Open Collection: ${process.env.URL}${collection.url}
           </p>
           <EmptySpace height={10} />
           <p>
-            <Button href={`${process.env.URL}${collection.url}`}>
+            <Button href={`${env.URL}${collection.url}`}>
               Open Collection
             </Button>
           </p>

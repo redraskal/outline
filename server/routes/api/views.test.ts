@@ -1,13 +1,9 @@
-import TestServer from "fetch-test-server";
+import { CollectionPermission } from "@shared/types";
 import { View, CollectionUser } from "@server/models";
-import webService from "@server/services/web";
 import { buildUser } from "@server/test/factories";
-import { flushdb, seed } from "@server/test/support";
+import { seed, getTestServer } from "@server/test/support";
 
-const app = webService();
-const server = new TestServer(app.callback());
-beforeEach(() => flushdb());
-afterAll(() => server.close());
+const server = getTestServer();
 
 describe("#views.list", () => {
   it("should return views for a document", async () => {
@@ -28,6 +24,26 @@ describe("#views.list", () => {
     expect(body.data[0].user.name).toBe(user.name);
   });
 
+  it("should not return views for suspended user by default", async () => {
+    const { user, admin, document } = await seed();
+    await View.incrementOrCreate({
+      documentId: document.id,
+      userId: user.id,
+    });
+
+    await user.update({ suspendedAt: new Date() });
+
+    const res = await server.post("/api/views.list", {
+      body: {
+        token: admin.getJwtToken(),
+        documentId: document.id,
+      },
+    });
+    const body = await res.json();
+    expect(res.status).toEqual(200);
+    expect(body.data.length).toBe(0);
+  });
+
   it("should return views for a document in read-only collection", async () => {
     const { user, document, collection } = await seed();
     collection.permission = null;
@@ -36,7 +52,7 @@ describe("#views.list", () => {
       createdById: user.id,
       collectionId: collection.id,
       userId: user.id,
-      permission: "read",
+      permission: CollectionPermission.Read,
     });
     await View.incrementOrCreate({
       documentId: document.id,
@@ -101,7 +117,7 @@ describe("#views.create", () => {
       createdById: user.id,
       collectionId: collection.id,
       userId: user.id,
-      permission: "read",
+      permission: CollectionPermission.Read,
     });
     const res = await server.post("/api/views.create", {
       body: {

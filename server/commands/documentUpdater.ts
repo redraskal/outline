@@ -1,5 +1,6 @@
 import { Transaction } from "sequelize";
 import { Event, Document, User } from "@server/models";
+import DocumentHelper from "@server/models/helpers/DocumentHelper";
 
 type Props = {
   /** The user updating the document */
@@ -13,13 +14,15 @@ type Props = {
   /** The version of the client editor that was used */
   editorVersion?: string;
   /** The ID of the template that was used */
-  templateId?: string;
+  templateId?: string | null;
   /** If the document should be displayed full-width on the screen */
   fullWidth?: boolean;
   /** Whether the text be appended to the end instead of replace */
   append?: boolean;
   /** Whether the document should be published to the collection */
   publish?: boolean;
+  /** The ID of the collection to publish the document to */
+  collectionId?: string | null;
   /** The IP address of the user creating the document */
   ip: string;
   /** The database transaction to run within */
@@ -43,6 +46,7 @@ export default async function documentUpdater({
   fullWidth,
   append,
   publish,
+  collectionId,
   transaction,
   ip,
 }: Props): Promise<Document> {
@@ -60,24 +64,24 @@ export default async function documentUpdater({
   if (fullWidth !== undefined) {
     document.fullWidth = fullWidth;
   }
-  if (!user.team?.collaborativeEditing) {
-    if (append) {
+  if (text !== undefined) {
+    if (user.team?.collaborativeEditing) {
+      document = DocumentHelper.applyMarkdownToDocument(document, text, append);
+    } else if (append) {
       document.text += text;
-    } else if (text !== undefined) {
+    } else {
       document.text = text;
     }
   }
 
-  document.lastModifiedById = user.id;
   const changed = document.changed();
 
   if (publish) {
+    if (!document.collectionId) {
+      document.collectionId = collectionId as string;
+    }
     await document.publish(user.id, { transaction });
-  } else {
-    await document.save({ transaction });
-  }
 
-  if (publish) {
     await Event.create(
       {
         name: "documents.publish",
@@ -93,6 +97,9 @@ export default async function documentUpdater({
       { transaction }
     );
   } else if (changed) {
+    document.lastModifiedById = user.id;
+    await document.save({ transaction });
+
     await Event.create(
       {
         name: "documents.update",
@@ -110,7 +117,7 @@ export default async function documentUpdater({
   }
 
   if (document.title !== previousTitle) {
-    Event.schedule({
+    await Event.schedule({
       name: "documents.title_change",
       documentId: document.id,
       collectionId: document.collectionId,

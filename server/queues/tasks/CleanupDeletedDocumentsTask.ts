@@ -1,15 +1,17 @@
 import { subDays } from "date-fns";
 import { Op } from "sequelize";
 import documentPermanentDeleter from "@server/commands/documentPermanentDeleter";
-import Logger from "@server/logging/logger";
+import Logger from "@server/logging/Logger";
 import { Document } from "@server/models";
-import BaseTask, { TaskPriority } from "./BaseTask";
+import BaseTask, { TaskPriority, TaskSchedule } from "./BaseTask";
 
 type Props = {
   limit: number;
 };
 
 export default class CleanupDeletedDocumentsTask extends BaseTask<Props> {
+  static cron = TaskSchedule.Daily;
+
   public async perform({ limit }: Props) {
     Logger.info(
       "task",

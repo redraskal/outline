@@ -6,7 +6,6 @@ import * as React from "react";
 import { WithTranslation, withTranslation } from "react-i18next";
 import {
   Prompt,
-  Route,
   RouteComponentProps,
   StaticContext,
   withRouter,
@@ -14,28 +13,30 @@ import {
 } from "react-router";
 import styled from "styled-components";
 import breakpoint from "styled-components-breakpoint";
+import { Heading } from "@shared/editor/lib/getHeadings";
+import { NavigationNode } from "@shared/types";
+import { parseDomain } from "@shared/utils/domains";
 import getTasks from "@shared/utils/getTasks";
 import RootStore from "~/stores/RootStore";
 import Document from "~/models/Document";
 import Revision from "~/models/Revision";
 import DocumentMove from "~/scenes/DocumentMove";
+import DocumentPublish from "~/scenes/DocumentPublish";
 import Branding from "~/components/Branding";
 import ConnectionStatus from "~/components/ConnectionStatus";
 import ErrorBoundary from "~/components/ErrorBoundary";
 import Flex from "~/components/Flex";
 import LoadingIndicator from "~/components/LoadingIndicator";
-import Modal from "~/components/Modal";
 import PageTitle from "~/components/PageTitle";
 import PlaceholderDocument from "~/components/PlaceholderDocument";
 import RegisterKeyDown from "~/components/RegisterKeyDown";
 import withStores from "~/components/withStores";
-import { NavigationNode } from "~/types";
+import type { Editor as TEditor } from "~/editor";
 import { client } from "~/utils/ApiClient";
-import { isCustomDomain } from "~/utils/domains";
+import { replaceTitleVariables } from "~/utils/date";
 import { emojiToUrl } from "~/utils/emoji";
 import { isModKey } from "~/utils/keyboard";
 import {
-  documentMoveUrl,
   documentHistoryUrl,
   editDocumentUrl,
   documentUrl,
@@ -50,16 +51,25 @@ import MarkAsViewed from "./MarkAsViewed";
 import Notices from "./Notices";
 import PublicReferences from "./PublicReferences";
 import References from "./References";
+import RevisionViewer from "./RevisionViewer";
 
 const AUTOSAVE_DELAY = 3000;
 
+type Params = {
+  documentSlug: string;
+  revisionId?: string;
+  shareId?: string;
+};
+
+type LocationState = {
+  title?: string;
+  restore?: boolean;
+  revisionId?: string;
+};
+
 type Props = WithTranslation &
   RootStore &
-  RouteComponentProps<
-    Record<string, string>,
-    StaticContext,
-    { restore?: boolean; revisionId?: string }
-  > & {
+  RouteComponentProps<Params, StaticContext, LocationState> & {
     sharedTree?: NavigationNode;
     abilities: Record<string, any>;
     document: Document;
@@ -73,7 +83,7 @@ type Props = WithTranslation &
 @observer
 class DocumentScene extends React.Component<Props> {
   @observable
-  editor = React.createRef<typeof Editor>();
+  editor = React.createRef<TEditor>();
 
   @observable
   isUploading = false;
@@ -95,6 +105,9 @@ class DocumentScene extends React.Component<Props> {
 
   @observable
   title: string = this.props.document.title;
+
+  @observable
+  headings: Heading[] = [];
 
   getEditorText: () => string = () => this.props.document.text;
 
@@ -158,7 +171,6 @@ class DocumentScene extends React.Component<Props> {
       return;
     }
 
-    // @ts-expect-error ts-migrate(2339) FIXME: Property 'view' does not exist on type 'unknown'.
     const { view, parser } = editorRef;
     view.dispatch(
       view.state.tr
@@ -173,8 +185,12 @@ class DocumentScene extends React.Component<Props> {
     }
 
     if (!this.title) {
-      this.title = template.title;
-      this.props.document.title = template.title;
+      const title = replaceTitleVariables(
+        template.title,
+        this.props.auth.user || undefined
+      );
+      this.title = title;
+      this.props.document.title = title;
     }
 
     this.props.document.text = template.text;
@@ -207,15 +223,15 @@ class DocumentScene extends React.Component<Props> {
     }
   };
 
-  goToMove = (ev: KeyboardEvent) => {
-    if (!this.props.readOnly) {
-      return;
-    }
+  onMove = (ev: React.MouseEvent | KeyboardEvent) => {
     ev.preventDefault();
-    const { document, abilities } = this.props;
-
+    const { document, dialogs, t, abilities } = this.props;
     if (abilities.move) {
-      this.props.history.push(documentMoveUrl(document));
+      dialogs.openModal({
+        title: t("Move document"),
+        isCentered: true,
+        content: <DocumentMove document={document} />,
+      });
     }
   };
 
@@ -250,14 +266,23 @@ class DocumentScene extends React.Component<Props> {
 
   onPublish = (ev: React.MouseEvent | KeyboardEvent) => {
     ev.preventDefault();
-    const { document } = this.props;
+    const { document, dialogs, t } = this.props;
     if (document.publishedAt) {
       return;
     }
-    this.onSave({
-      publish: true,
-      done: true,
-    });
+
+    if (document?.collectionId) {
+      this.onSave({
+        publish: true,
+        done: true,
+      });
+    } else {
+      dialogs.openModal({
+        title: t("Publish document"),
+        isCentered: true,
+        content: <DocumentPublish document={document} />,
+      });
+    }
   };
 
   onToggleTableOfContents = (ev: KeyboardEvent) => {
@@ -281,7 +306,7 @@ class DocumentScene extends React.Component<Props> {
       autosave?: boolean;
     } = {}
   ) => {
-    const { document, auth } = this.props;
+    const { document } = this.props;
     // prevent saves when we are already saving
     if (document.isSaving) {
       return;
@@ -307,22 +332,10 @@ class DocumentScene extends React.Component<Props> {
     this.isPublishing = !!options.publish;
 
     try {
-      let savedDocument = document;
-
-      if (auth.team?.collaborativeEditing) {
-        // update does not send "text" field to the API, this is a workaround
-        // while the multiplayer editor is toggleable. Once it's finalized
-        // this can be cleaned up to single code path
-        savedDocument = await document.update({
-          ...options,
-          lastRevision: this.lastRevision,
-        });
-      } else {
-        savedDocument = await document.save({
-          ...options,
-          lastRevision: this.lastRevision,
-        });
-      }
+      const savedDocument = await document.save({
+        ...options,
+        lastRevision: this.lastRevision,
+      });
 
       this.isEditorDirty = false;
       this.lastRevision = savedDocument.revision;
@@ -375,13 +388,15 @@ class DocumentScene extends React.Component<Props> {
     const { document, auth } = this.props;
     this.getEditorText = getEditorText;
 
-    // If the multiplayer editor is enabled then we still want to keep the local
-    // text value in sync as it is used as a cache.
+    // Keep derived task list in sync
+    const tasks = this.editor.current?.getTasks();
+    const total = tasks?.length ?? 0;
+    const completed = tasks?.filter((t) => t.completed).length ?? 0;
+    document.updateTasks(total, completed);
+
+    // If the multiplayer editor is enabled we're done here as changes are saved
+    // through the persistence protocol. The rest of this method is legacy.
     if (auth.team?.collaborativeEditing) {
-      action(() => {
-        document.text = this.getEditorText();
-        document.tasks = getTasks(document.text);
-      })();
       return;
     }
 
@@ -397,6 +412,10 @@ class DocumentScene extends React.Component<Props> {
       this.updateIsDirtyDebounced();
       this.autosave();
     }
+  };
+
+  onHeadingsChange = (headings: Heading[]) => {
+    this.headings = headings;
   };
 
   onChangeTitle = action((value: string) => {
@@ -425,16 +444,10 @@ class DocumentScene extends React.Component<Props> {
     } = this.props;
     const team = auth.team;
     const isShare = !!shareId;
-    const value = revision ? revision.text : document.text;
     const embedsDisabled =
       (team && team.documentEmbeds === false) || document.embedsDisabled;
 
-    const headings = this.editor.current
-      ? // @ts-expect-error ts-migrate(2571) FIXME: Object is of type 'unknown'.
-        this.editor.current.getHeadings()
-      : [];
-
-    const hasHeadings = headings.length > 0;
+    const hasHeadings = this.headings.length > 0;
     const showContents =
       ui.tocVisible &&
       ((readOnly && hasHeadings) || team?.collaborativeEditing);
@@ -456,10 +469,11 @@ class DocumentScene extends React.Component<Props> {
             to={{
               pathname: canonicalUrl,
               state: this.props.location.state,
+              hash: this.props.location.hash,
             }}
           />
         )}
-        <RegisterKeyDown trigger="m" handler={this.goToMove} />
+        <RegisterKeyDown trigger="m" handler={this.onMove} />
         <RegisterKeyDown trigger="e" handler={this.goToEdit} />
         <RegisterKeyDown trigger="Escape" handler={this.goBack} />
         <RegisterKeyDown trigger="h" handler={this.goToHistory} />
@@ -479,22 +493,12 @@ class DocumentScene extends React.Component<Props> {
             }
           }}
         />
-        <Background key={revision ? revision.id : document.id} column auto>
-          <Route
-            path={`${document.url}/move`}
-            component={() => (
-              <Modal
-                title={`Move ${document.noun}`}
-                onRequestClose={this.goBack}
-                isOpen
-              >
-                <DocumentMove
-                  document={document}
-                  onRequestClose={this.goBack}
-                />
-              </Modal>
-            )}
-          />
+        <Background
+          id="full-width-container"
+          key={revision ? revision.id : document.id}
+          column
+          auto
+        >
           <PageTitle
             title={document.titleWithDefault.replace(document.emoji || "", "")}
             favicon={document.emoji ? emojiToUrl(document.emoji) : undefined}
@@ -538,7 +542,7 @@ class DocumentScene extends React.Component<Props> {
               shareId={shareId}
               isRevision={!!revision}
               isDraft={document.isDraft}
-              isEditing={!readOnly && !team?.collaborativeEditing}
+              isEditing={!readOnly && !team?.seamlessEditing}
               isSaving={this.isSaving}
               isPublishing={this.isPublishing}
               publishingIsDisabled={
@@ -548,7 +552,7 @@ class DocumentScene extends React.Component<Props> {
               sharedTree={this.props.sharedTree}
               onSelectTemplate={this.replaceDocument}
               onSave={this.onSave}
-              headings={headings}
+              headings={this.headings}
             />
             <MaxWidth
               archived={document.isArchived}
@@ -560,63 +564,79 @@ class DocumentScene extends React.Component<Props> {
             >
               <Notices document={document} readOnly={readOnly} />
               <React.Suspense fallback={<PlaceholderDocument />}>
-                <Flex auto={!readOnly}>
-                  {showContents && (
-                    <Contents
-                      headings={headings}
-                      isFullWidth={document.fullWidth}
+                <Flex auto={!readOnly} reverse>
+                  {revision ? (
+                    <RevisionViewer
+                      isDraft={document.isDraft}
+                      document={document}
+                      revision={revision}
+                      id={revision.id}
                     />
-                  )}
-                  <Editor
-                    id={document.id}
-                    key={embedsDisabled ? "disabled" : "enabled"}
-                    ref={this.editor}
-                    multiplayer={collaborativeEditing}
-                    shareId={shareId}
-                    isDraft={document.isDraft}
-                    template={document.isTemplate}
-                    title={revision ? revision.title : document.title}
-                    document={document}
-                    value={readOnly ? value : undefined}
-                    defaultValue={value}
-                    embedsDisabled={embedsDisabled}
-                    onSynced={this.onSynced}
-                    onFileUploadStart={this.onFileUploadStart}
-                    onFileUploadStop={this.onFileUploadStop}
-                    onSearchLink={this.props.onSearchLink}
-                    onCreateLink={this.props.onCreateLink}
-                    onChangeTitle={this.onChangeTitle}
-                    onChange={this.onChange}
-                    onSave={this.onSave}
-                    onPublish={this.onPublish}
-                    onCancel={this.goBack}
-                    readOnly={readOnly}
-                    readOnlyWriteCheckboxes={readOnly && abilities.update}
-                  >
-                    {shareId && (
-                      <ReferencesWrapper isOnlyTitle={document.isOnlyTitle}>
-                        <PublicReferences
-                          shareId={shareId}
-                          documentId={document.id}
-                          sharedTree={this.props.sharedTree}
+                  ) : (
+                    <>
+                      <Editor
+                        id={document.id}
+                        key={embedsDisabled ? "disabled" : "enabled"}
+                        ref={this.editor}
+                        multiplayer={collaborativeEditing}
+                        shareId={shareId}
+                        isDraft={document.isDraft}
+                        template={document.isTemplate}
+                        document={document}
+                        value={readOnly ? document.text : undefined}
+                        defaultValue={document.text}
+                        embedsDisabled={embedsDisabled}
+                        onSynced={this.onSynced}
+                        onFileUploadStart={this.onFileUploadStart}
+                        onFileUploadStop={this.onFileUploadStop}
+                        onSearchLink={this.props.onSearchLink}
+                        onCreateLink={this.props.onCreateLink}
+                        onChangeTitle={this.onChangeTitle}
+                        onChange={this.onChange}
+                        onHeadingsChange={this.onHeadingsChange}
+                        onSave={this.onSave}
+                        onPublish={this.onPublish}
+                        onCancel={this.goBack}
+                        readOnly={readOnly}
+                        readOnlyWriteCheckboxes={readOnly && abilities.update}
+                      >
+                        {shareId && (
+                          <ReferencesWrapper isOnlyTitle={document.isOnlyTitle}>
+                            <PublicReferences
+                              shareId={shareId}
+                              documentId={document.id}
+                              sharedTree={this.props.sharedTree}
+                            />
+                          </ReferencesWrapper>
+                        )}
+                        {!isShare && !revision && (
+                          <>
+                            <MarkAsViewed document={document} />
+                            <ReferencesWrapper
+                              isOnlyTitle={document.isOnlyTitle}
+                            >
+                              <References document={document} />
+                            </ReferencesWrapper>
+                          </>
+                        )}
+                      </Editor>
+
+                      {showContents && (
+                        <Contents
+                          headings={this.headings}
+                          isFullWidth={document.fullWidth}
                         />
-                      </ReferencesWrapper>
-                    )}
-                    {!isShare && !revision && (
-                      <>
-                        <MarkAsViewed document={document} />
-                        <ReferencesWrapper isOnlyTitle={document.isOnlyTitle}>
-                          <References document={document} />
-                        </ReferencesWrapper>
-                      </>
-                    )}
-                  </Editor>
+                      )}
+                    </>
+                  )}
                 </Flex>
               </React.Suspense>
             </MaxWidth>
-            {isShare && !isCustomDomain() && (
-              <Branding href="//www.getoutline.com?ref=sharelink" />
-            )}
+            {isShare &&
+              !parseDomain(window.location.origin).custom &&
+              !auth.user && (
+                <Branding href="//www.getoutline.com?ref=sharelink" />
+              )}
           </Container>
         </Background>
         {!isShare && (
@@ -660,7 +680,6 @@ const MaxWidth = styled(Flex)<MaxWidthProps>`
   padding-bottom: 16px;
 
   ${breakpoint("tablet")`
-    padding: 0 44px;
     margin: 4px auto 12px;
     max-width: ${(props: MaxWidthProps) =>
       props.isFullWidth

@@ -9,8 +9,8 @@ import CenteredContent from "~/components/CenteredContent";
 import PageTitle from "~/components/PageTitle";
 import Text from "~/components/Text";
 import env from "~/env";
-import isHosted from "~/utils/isHosted";
-import Logger from "~/utils/logger";
+import Logger from "~/utils/Logger";
+import isCloudHosted from "~/utils/isCloudHosted";
 
 type Props = WithTranslation & {
   reloadOnChunkMissing?: boolean;
@@ -30,7 +30,7 @@ class ErrorBoundary extends React.Component<Props> {
     if (
       this.props.reloadOnChunkMissing &&
       error.message &&
-      error.message.match(/chunk/)
+      error.message.match(/dynamically imported module/)
     ) {
       // If the editor bundle fails to load then reload the entire window. This
       // can happen if a deploy happens between the user loading the initial JS
@@ -59,8 +59,10 @@ class ErrorBoundary extends React.Component<Props> {
 
     if (this.error) {
       const error = this.error;
-      const isReported = !!env.SENTRY_DSN && isHosted;
-      const isChunkError = this.error.message.match(/chunk/);
+      const isReported = !!env.SENTRY_DSN && isCloudHosted;
+      const isChunkError = this.error.message.match(
+        /dynamically imported module/
+      );
 
       if (isChunkError) {
         return (

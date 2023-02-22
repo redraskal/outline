@@ -42,8 +42,16 @@ export { default as Star } from "./Star";
 
 export { default as Team } from "./Team";
 
+export { default as TeamDomain } from "./TeamDomain";
+
 export { default as User } from "./User";
 
 export { default as UserAuthentication } from "./UserAuthentication";
 
 export { default as View } from "./View";
+
+export { default as WebhookSubscription } from "./WebhookSubscription";
+
+export { default as WebhookDelivery } from "./WebhookDelivery";
+
+export { default as Subscription } from "./Subscription";

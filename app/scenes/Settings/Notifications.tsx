@@ -13,7 +13,7 @@ import env from "~/env";
 import useCurrentUser from "~/hooks/useCurrentUser";
 import useStores from "~/hooks/useStores";
 import useToasts from "~/hooks/useToasts";
-import isHosted from "~/utils/isHosted";
+import isCloudHosted from "~/utils/isCloudHosted";
 import SettingRow from "./components/SettingRow";
 
 function Notifications() {
@@ -45,18 +45,27 @@ function Notifications() {
       ),
     },
     {
-      separator: true,
-    },
-    {
-      visible: isHosted,
-      event: "emails.onboarding",
-      title: t("Getting started"),
+      event: "emails.invite_accepted",
+      title: t("Invite accepted"),
       description: t(
-        "Tips on getting started with Outline`s features and functionality"
+        "Receive a notification when someone you invited creates an account"
       ),
     },
     {
-      visible: isHosted,
+      event: "emails.export_completed",
+      title: t("Export completed"),
+      description: t(
+        "Receive a notification when an export you requested has been completed"
+      ),
+    },
+    {
+      visible: isCloudHosted,
+      event: "emails.onboarding",
+      title: t("Getting started"),
+      description: t("Tips on getting started with features and functionality"),
+    },
+    {
+      visible: isCloudHosted,
       event: "emails.features",
       title: t("New features"),
       description: t("Receive an email when new features of note are added"),
@@ -121,10 +130,6 @@ function Notifications() {
           <h2>{t("Notifications")}</h2>
 
           {options.map((option) => {
-            if (option.separator || !option.event) {
-              return <br />;
-            }
-
             const setting = notificationSettings.getByEvent(option.event);
 
             return (

@@ -1,33 +1,35 @@
 import nodemailer, { Transporter } from "nodemailer";
+import SMTPTransport from "nodemailer/lib/smtp-transport";
 import Oy from "oy-vey";
-import * as React from "react";
-import Logger from "@server/logging/logger";
-import { APM } from "@server/logging/tracing";
+import env from "@server/env";
+import Logger from "@server/logging/Logger";
+import { trace } from "@server/logging/tracing";
 import { baseStyles } from "./templates/components/EmailLayout";
 
 const useTestEmailService =
-  process.env.NODE_ENV === "development" && !process.env.SMTP_USERNAME;
+  env.ENVIRONMENT === "development" && !env.SMTP_USERNAME;
 
 type SendMailOptions = {
   to: string;
+  replyTo?: string;
   subject: string;
   previewText?: string;
   text: string;
-  component: React.ReactNode;
+  component: JSX.Element;
   headCSS?: string;
 };
 
 /**
  * Mailer class to send emails.
  */
-@APM.trace({
-  spanName: "mailer",
+@trace({
+  serviceName: "mailer",
 })
 export class Mailer {
   transporter: Transporter | undefined;
 
   constructor() {
-    if (process.env.SMTP_HOST) {
+    if (env.SMTP_HOST) {
       this.transporter = nodemailer.createTransport(this.getOptions());
     }
     if (useTestEmailService) {
@@ -42,6 +44,7 @@ export class Mailer {
             "email",
             "Couldn't generate a test account with ethereal.email at this time – emails will not be sent."
           );
+          return;
         }
 
         this.transporter = nodemailer.createTransport(options);
@@ -63,18 +66,27 @@ export class Mailer {
     const html = Oy.renderTemplate(data.component, {
       title: data.subject,
       headCSS: [baseStyles, data.headCSS].join(" "),
-      previewText: data.previewText,
+      previewText: data.previewText ?? "",
     });
 
     try {
       Logger.info("email", `Sending email "${data.subject}" to ${data.to}`);
       const info = await transporter.sendMail({
-        from: process.env.SMTP_FROM_EMAIL,
-        replyTo: process.env.SMTP_REPLY_EMAIL || process.env.SMTP_FROM_EMAIL,
+        from: env.SMTP_FROM_EMAIL,
+        replyTo: data.replyTo ?? env.SMTP_REPLY_EMAIL ?? env.SMTP_FROM_EMAIL,
         to: data.to,
         subject: data.subject,
         html,
         text: data.text,
+        attachments: env.isCloudHosted()
+          ? undefined
+          : [
+              {
+                filename: "header-logo.png",
+                path: process.cwd() + "/public/email/header-logo.png",
+                cid: "header-image",
+              },
+            ],
       });
 
       if (useTestEmailService) {
@@ -89,30 +101,33 @@ export class Mailer {
     }
   };
 
-  private getOptions() {
+  private getOptions(): SMTPTransport.Options {
     return {
-      host: process.env.SMTP_HOST || "",
-      port: parseInt(process.env.SMTP_PORT || "", 10),
-      secure:
-        "SMTP_SECURE" in process.env
-          ? process.env.SMTP_SECURE === "true"
-          : process.env.NODE_ENV === "production",
-      auth: process.env.SMTP_USERNAME
+      name: env.SMTP_NAME,
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_SECURE ?? env.ENVIRONMENT === "production",
+      auth: env.SMTP_USERNAME
         ? {
-            user: process.env.SMTP_USERNAME || "",
-            pass: process.env.SMTP_PASSWORD,
+            user: env.SMTP_USERNAME,
+            pass: env.SMTP_PASSWORD,
           }
         : undefined,
-      tls:
-        "SMTP_TLS_CIPHERS" in process.env
+      tls: env.SMTP_SECURE
+        ? env.SMTP_TLS_CIPHERS
           ? {
-              ciphers: process.env.SMTP_TLS_CIPHERS,
+              ciphers: env.SMTP_TLS_CIPHERS,
             }
-          : undefined,
+          : undefined
+        : {
+            rejectUnauthorized: false,
+          },
     };
   }
 
-  private async getTestTransportOptions() {
+  private async getTestTransportOptions(): Promise<
+    SMTPTransport.Options | undefined
+  > {
     try {
       const testAccount = await nodemailer.createTestAccount();
       return {
@@ -130,6 +145,4 @@ export class Mailer {
   }
 }
 
-const mailer = new Mailer();
-
-export default mailer;
+export default new Mailer();

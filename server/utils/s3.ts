@@ -98,7 +98,7 @@ export const uploadToS3 = async ({
 }) => {
   await s3
     .putObject({
-      ACL: acl,
+      // ACL: acl,
       Bucket: AWS_S3_UPLOAD_BUCKET_NAME,
       Key: key,
       ContentType: contentType,
@@ -128,7 +128,7 @@ export const uploadToS3FromUrl = async (
     const buffer = await res.buffer();
     await s3
       .putObject({
-        ACL: acl,
+        // ACL: acl,
         Bucket: AWS_S3_UPLOAD_BUCKET_NAME,
         Key: key,
         ContentType: res.headers["content-type"],

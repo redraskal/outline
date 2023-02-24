@@ -6,7 +6,6 @@ import * as React from "react";
 import { WithTranslation, withTranslation } from "react-i18next";
 import {
   Prompt,
-  Route,
   RouteComponentProps,
   StaticContext,
   withRouter,
@@ -15,29 +14,29 @@ import {
 import styled from "styled-components";
 import breakpoint from "styled-components-breakpoint";
 import { Heading } from "@shared/editor/lib/getHeadings";
+import { NavigationNode } from "@shared/types";
 import { parseDomain } from "@shared/utils/domains";
 import getTasks from "@shared/utils/getTasks";
 import RootStore from "~/stores/RootStore";
 import Document from "~/models/Document";
 import Revision from "~/models/Revision";
 import DocumentMove from "~/scenes/DocumentMove";
+import DocumentPublish from "~/scenes/DocumentPublish";
 import Branding from "~/components/Branding";
 import ConnectionStatus from "~/components/ConnectionStatus";
 import ErrorBoundary from "~/components/ErrorBoundary";
 import Flex from "~/components/Flex";
 import LoadingIndicator from "~/components/LoadingIndicator";
-import Modal from "~/components/Modal";
 import PageTitle from "~/components/PageTitle";
 import PlaceholderDocument from "~/components/PlaceholderDocument";
 import RegisterKeyDown from "~/components/RegisterKeyDown";
 import withStores from "~/components/withStores";
 import type { Editor as TEditor } from "~/editor";
-import { NavigationNode } from "~/types";
 import { client } from "~/utils/ApiClient";
+import { replaceTitleVariables } from "~/utils/date";
 import { emojiToUrl } from "~/utils/emoji";
 import { isModKey } from "~/utils/keyboard";
 import {
-  documentMoveUrl,
   documentHistoryUrl,
   editDocumentUrl,
   documentUrl,
@@ -186,8 +185,12 @@ class DocumentScene extends React.Component<Props> {
     }
 
     if (!this.title) {
-      this.title = template.title;
-      this.props.document.title = template.title;
+      const title = replaceTitleVariables(
+        template.title,
+        this.props.auth.user || undefined
+      );
+      this.title = title;
+      this.props.document.title = title;
     }
 
     this.props.document.text = template.text;
@@ -220,15 +223,15 @@ class DocumentScene extends React.Component<Props> {
     }
   };
 
-  goToMove = (ev: KeyboardEvent) => {
-    if (!this.props.readOnly) {
-      return;
-    }
+  onMove = (ev: React.MouseEvent | KeyboardEvent) => {
     ev.preventDefault();
-    const { document, abilities } = this.props;
-
+    const { document, dialogs, t, abilities } = this.props;
     if (abilities.move) {
-      this.props.history.push(documentMoveUrl(document));
+      dialogs.openModal({
+        title: t("Move document"),
+        isCentered: true,
+        content: <DocumentMove document={document} />,
+      });
     }
   };
 
@@ -263,14 +266,23 @@ class DocumentScene extends React.Component<Props> {
 
   onPublish = (ev: React.MouseEvent | KeyboardEvent) => {
     ev.preventDefault();
-    const { document } = this.props;
+    const { document, dialogs, t } = this.props;
     if (document.publishedAt) {
       return;
     }
-    this.onSave({
-      publish: true,
-      done: true,
-    });
+
+    if (document?.collectionId) {
+      this.onSave({
+        publish: true,
+        done: true,
+      });
+    } else {
+      dialogs.openModal({
+        title: t("Publish document"),
+        isCentered: true,
+        content: <DocumentPublish document={document} />,
+      });
+    }
   };
 
   onToggleTableOfContents = (ev: KeyboardEvent) => {
@@ -461,7 +473,7 @@ class DocumentScene extends React.Component<Props> {
             }}
           />
         )}
-        <RegisterKeyDown trigger="m" handler={this.goToMove} />
+        <RegisterKeyDown trigger="m" handler={this.onMove} />
         <RegisterKeyDown trigger="e" handler={this.goToEdit} />
         <RegisterKeyDown trigger="Escape" handler={this.goBack} />
         <RegisterKeyDown trigger="h" handler={this.goToHistory} />
@@ -481,22 +493,12 @@ class DocumentScene extends React.Component<Props> {
             }
           }}
         />
-        <Background key={revision ? revision.id : document.id} column auto>
-          <Route
-            path={`${document.url}/move`}
-            component={() => (
-              <Modal
-                title={`Move ${document.noun}`}
-                onRequestClose={this.goBack}
-                isOpen
-              >
-                <DocumentMove
-                  document={document}
-                  onRequestClose={this.goBack}
-                />
-              </Modal>
-            )}
-          />
+        <Background
+          id="full-width-container"
+          key={revision ? revision.id : document.id}
+          column
+          auto
+        >
           <PageTitle
             title={document.titleWithDefault.replace(document.emoji || "", "")}
             favicon={document.emoji ? emojiToUrl(document.emoji) : undefined}
@@ -540,7 +542,7 @@ class DocumentScene extends React.Component<Props> {
               shareId={shareId}
               isRevision={!!revision}
               isDraft={document.isDraft}
-              isEditing={!readOnly && !team?.collaborativeEditing}
+              isEditing={!readOnly && !team?.seamlessEditing}
               isSaving={this.isSaving}
               isPublishing={this.isPublishing}
               publishingIsDisabled={
@@ -562,7 +564,7 @@ class DocumentScene extends React.Component<Props> {
             >
               <Notices document={document} readOnly={readOnly} />
               <React.Suspense fallback={<PlaceholderDocument />}>
-                <Flex auto={!readOnly}>
+                <Flex auto={!readOnly} reverse>
                   {revision ? (
                     <RevisionViewer
                       isDraft={document.isDraft}
@@ -572,12 +574,6 @@ class DocumentScene extends React.Component<Props> {
                     />
                   ) : (
                     <>
-                      {showContents && (
-                        <Contents
-                          headings={this.headings}
-                          isFullWidth={document.fullWidth}
-                        />
-                      )}
                       <Editor
                         id={document.id}
                         key={embedsDisabled ? "disabled" : "enabled"}
@@ -624,14 +620,23 @@ class DocumentScene extends React.Component<Props> {
                           </>
                         )}
                       </Editor>
+
+                      {showContents && (
+                        <Contents
+                          headings={this.headings}
+                          isFullWidth={document.fullWidth}
+                        />
+                      )}
                     </>
                   )}
                 </Flex>
               </React.Suspense>
             </MaxWidth>
-            {isShare && !parseDomain(window.location.origin).custom && (
-              <Branding href="//www.getoutline.com?ref=sharelink" />
-            )}
+            {isShare &&
+              !parseDomain(window.location.origin).custom &&
+              !auth.user && (
+                <Branding href="//www.getoutline.com?ref=sharelink" />
+              )}
           </Container>
         </Background>
         {!isShare && (
@@ -675,7 +680,6 @@ const MaxWidth = styled(Flex)<MaxWidthProps>`
   padding-bottom: 16px;
 
   ${breakpoint("tablet")`
-    padding: 0 44px;
     margin: 4px auto 12px;
     max-width: ${(props: MaxWidthProps) =>
       props.isFullWidth

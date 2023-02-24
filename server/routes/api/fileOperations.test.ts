@@ -1,8 +1,5 @@
+import { FileOperationState, FileOperationType } from "@shared/types";
 import { Collection, User, Event, FileOperation } from "@server/models";
-import {
-  FileOperationState,
-  FileOperationType,
-} from "@server/models/FileOperation";
 import {
   buildAdmin,
   buildCollection,
@@ -11,16 +8,11 @@ import {
   buildUser,
 } from "@server/test/factories";
 
-import { getTestDatabase, getTestServer } from "@server/test/support";
+import { getTestServer } from "@server/test/support";
 
-const db = getTestDatabase();
 const server = getTestServer();
 
 jest.mock("@server/utils/s3");
-
-afterAll(server.disconnect);
-
-beforeEach(db.flush);
 
 describe("#fileOperations.info", () => {
   it("should return fileOperation", async () => {

@@ -1,6 +1,7 @@
 import { observer } from "mobx-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import { mergeRefs } from "react-merge-refs";
 import { useRouteMatch } from "react-router-dom";
 import fullPackage from "@shared/editor/packages/full";
 import Document from "~/models/Document";
@@ -13,6 +14,7 @@ import {
   documentUrl,
   matchDocumentHistory,
 } from "~/utils/routeHelpers";
+import { useDocumentContext } from "../../../components/DocumentContext";
 import MultiplayerEditor from "./AsyncMultiplayerEditor";
 import EditableTitle from "./EditableTitle";
 
@@ -49,6 +51,7 @@ function DocumentEditor(props: Props, ref: React.RefObject<any>) {
     ...rest
   } = props;
 
+  const childRef = React.useRef<HTMLDivElement>(null);
   const focusAtStart = React.useCallback(() => {
     if (ref.current) {
       ref.current.focusAtStart();
@@ -73,6 +76,9 @@ function DocumentEditor(props: Props, ref: React.RefObject<any>) {
     },
     [focusAtStart, ref]
   );
+
+  const { setEditor } = useDocumentContext();
+  const handleRefChanged = React.useCallback(setEditor, [setEditor]);
 
   const EditorComponent = multiplayer ? MultiplayerEditor : Editor;
 
@@ -103,17 +109,17 @@ function DocumentEditor(props: Props, ref: React.RefObject<any>) {
         />
       )}
       <EditorComponent
-        ref={ref}
+        ref={mergeRefs([ref, handleRefChanged])}
         autoFocus={!!document.title && !props.defaultValue}
         placeholder={t("Type '/' to insert, or start writing…")}
-        scrollTo={window.location.hash}
+        scrollTo={decodeURIComponent(window.location.hash)}
         readOnly={readOnly}
         shareId={shareId}
         extensions={fullPackage}
-        grow
+        bottomPadding={`calc(50vh - ${childRef.current?.offsetHeight || 0}px)`}
         {...rest}
       />
-      {children}
+      <div ref={childRef}>{children}</div>
     </Flex>
   );
 }

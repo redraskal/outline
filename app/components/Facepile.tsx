@@ -39,7 +39,7 @@ function Facepile({
 }
 
 function DefaultAvatar(user: User) {
-  return <Avatar user={user} src={user.avatarUrl} size={32} />;
+  return <Avatar model={user} size={32} />;
 }
 
 const AvatarWrapper = styled.div`
@@ -69,7 +69,7 @@ const More = styled.div<{ size: number }>`
 const Avatars = styled(Flex)`
   align-items: center;
   flex-direction: row-reverse;
-  cursor: pointer;
+  cursor: var(--pointer);
 `;
 
 export default observer(Facepile);

@@ -2,7 +2,11 @@ import { createGlobalStyle } from "styled-components";
 import styledNormalize from "styled-normalize";
 import { breakpoints, depths } from ".";
 
-export default createGlobalStyle`
+type Props = {
+  useCursorPointer?: boolean;
+};
+
+export default createGlobalStyle<Props>`
   ${styledNormalize}
 
   * {
@@ -17,6 +21,7 @@ export default createGlobalStyle`
     padding: 0;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+    --pointer: ${(props) => (props.useCursorPointer ? "pointer" : "default")};
   }
 
   body,
@@ -105,7 +110,7 @@ export default createGlobalStyle`
   }
 
   .js-focus-visible .focus-visible {
-    outline-color: ${(props) => props.theme.primary};
+    outline-color: ${(props) => props.theme.accent};
     outline-offset: -1px;
   }
 `;

@@ -11,6 +11,109 @@ export type Props = {
   theme: DefaultTheme;
 };
 
+const mathStyle = (props: Props) => `
+/* Based on https://github.com/benrbray/prosemirror-math/blob/master/style/math.css */
+
+.math-node {
+  min-width: 1em;
+  min-height: 1em;
+  font-size: 0.95em;
+  font-family: ${props.theme.fontFamilyMono};
+  cursor: auto;
+}
+
+.math-node.empty-math .math-render::before {
+  content: "(empty math)";
+  color: ${props.theme.brand.red};
+}
+
+.math-node .math-render.parse-error::before {
+  content: "(math error)";
+  color: ${props.theme.brand.red};
+  cursor: help;
+}
+
+.math-node.ProseMirror-selectednode {
+  outline: none;
+}
+
+.math-node .math-src {
+  display: none;
+  color: ${props.theme.codeStatement};
+  tab-size: 4;
+}
+
+.math-node.ProseMirror-selectednode .math-src {
+  display: inline;
+}
+
+.math-node.ProseMirror-selectednode .math-render {
+  display: none;
+}
+
+math-inline {
+  display: inline; white-space: nowrap;
+
+}
+
+math-inline .math-render { 
+  display: inline-block;
+  font-size: 0.85em;
+}
+
+math-inline .math-src .ProseMirror {
+  display: inline;
+  border-radius: 4px;
+  border: 1px solid ${props.theme.codeBorder};
+  padding: 3px 4px;
+  margin: 0px 3px;
+  font-family: ${props.theme.fontFamilyMono};
+  font-size: 80%;
+}
+
+math-block {
+  display: block;
+}
+
+math-block .math-render {
+  display: block;
+}
+
+math-block.ProseMirror-selectednode {
+  border-radius: 4px;
+  border: 1px solid ${props.theme.codeBorder};
+  background: ${props.theme.codeBackground};
+  padding: 0.75em 1em;
+  font-family: ${props.theme.fontFamilyMono};
+  font-size: 80%;
+}
+
+math-block .math-src .ProseMirror {
+  width: 100%;
+  display: block;
+}
+
+math-block .katex-display {
+  margin: 0;
+}
+
+p::selection, p > *::selection {
+  background-color: #c0c0c0;
+}
+
+.katex-html *::selection {
+  background-color: none !important;
+}
+
+.math-node.math-select .math-render {
+  background-color: #c0c0c0ff;
+}
+
+math-inline.math-select .math-render {
+  padding-top: 2px;
+}
+`;
+
 const style = (props: Props) => `
 flex-grow: ${props.grow ? 1 : 0};
 justify-content: start;
@@ -46,6 +149,10 @@ width: 100%;
   & > * {
     margin-top: .5em;
     margin-bottom: .5em;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 
   & > :first-child,
@@ -137,12 +244,13 @@ li {
   text-align: center;
   max-width: 100%;
   clear: both;
+  position: relative;
+  z-index: 1;
 
   img {
     pointer-events: ${props.readOnly ? "initial" : "none"};
     display: inline-block;
     max-width: 100%;
-    max-height: 75vh;
   }
 
   .ProseMirror-selectednode img {
@@ -168,7 +276,7 @@ li {
 
 .image-right-50 {
   float: right;
-  width: 50%;
+  width: 33.3%;
   margin-left: 2em;
   margin-bottom: 1em;
   clear: initial;
@@ -176,10 +284,25 @@ li {
 
 .image-left-50 {
   float: left;
-  width: 50%;
+  width: 33.3%;
   margin-right: 2em;
   margin-bottom: 1em;
   clear: initial;
+}
+
+.image-full-width {
+  width: initial;
+  max-width: 100vw;
+  clear: both;
+  position: initial;
+  ${props.rtl ? `margin-right: var(--offset)` : `margin-left: var(--offset)`};
+
+  img {
+    max-width: 100vw;
+    max-height: 50vh;
+    object-fit: cover;
+    object-position: center;
+  }
 }
 
 .ProseMirror-hideselection *::selection {
@@ -325,6 +448,7 @@ h6:not(.placeholder):before {
   content: "H6";
 }
 
+.ProseMirror[contenteditable="true"]:focus-within,
 .ProseMirror-focused {
   h1,
   h2,
@@ -347,7 +471,7 @@ h6:not(.placeholder):before {
   display: inline-block;
   color: ${props.theme.text};
   opacity: .75;
-  cursor: pointer;
+  cursor: var(--pointer);
   background: none;
   outline: none;
   border: 0;
@@ -602,7 +726,6 @@ ol ol ol {
 }
 
 ul.checkbox_list {
-  list-style: none;
   padding: 0;
   margin-left: ${props.rtl ? "0" : "-24px"};
   margin-right: ${props.rtl ? "-24px" : "0"};
@@ -622,14 +745,14 @@ ol li {
   }
 }
 
-ul.checkbox_list li {
+ul.checkbox_list > li {
   display: flex;
+  list-style: none;
   padding-${props.rtl ? "right" : "left"}: 24px;
 }
 
-ul.checkbox_list li.checked > div > p {
-  color: ${props.theme.textSecondary};
-  text-decoration: line-through;
+ul.checkbox_list > li.checked > div > p {
+  color: ${props.theme.textTertiary};
 }
 
 ul li::before,
@@ -667,13 +790,13 @@ ol li.ProseMirror-selectednode::after {
   display: none;
 }
 
-ul.checkbox_list li::before {
+ul.checkbox_list > li::before {
   ${props.rtl ? "right" : "left"}: 0;
 }
 
 ul.checkbox_list li .checkbox {
   display: inline-block;
-  cursor: pointer;
+  cursor: var(--pointer);
   pointer-events: ${
     props.readOnly && !props.readOnlyWriteCheckboxes ? "none" : "initial"
   };
@@ -694,7 +817,7 @@ ul.checkbox_list li .checkbox {
   &[aria-checked=true] {
     opacity: 1;
     background-image: ${`url(
-        "data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M3 0C1.34315 0 0 1.34315 0 3V11C0 12.6569 1.34315 14 3 14H11C12.6569 14 14 12.6569 14 11V3C14 1.34315 12.6569 0 11 0H3ZM4.26825 5.85982L5.95873 7.88839L9.70003 2.9C10.0314 2.45817 10.6582 2.36863 11.1 2.7C11.5419 3.03137 11.6314 3.65817 11.3 4.1L6.80002 10.1C6.41275 10.6164 5.64501 10.636 5.2318 10.1402L2.7318 7.14018C2.37824 6.71591 2.43556 6.08534 2.85984 5.73178C3.28412 5.37821 3.91468 5.43554 4.26825 5.85982Z' fill='${props.theme.primary.replace(
+        "data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M3 0C1.34315 0 0 1.34315 0 3V11C0 12.6569 1.34315 14 3 14H11C12.6569 14 14 12.6569 14 11V3C14 1.34315 12.6569 0 11 0H3ZM4.26825 5.85982L5.95873 7.88839L9.70003 2.9C10.0314 2.45817 10.6582 2.36863 11.1 2.7C11.5419 3.03137 11.6314 3.65817 11.3 4.1L6.80002 10.1C6.41275 10.6164 5.64501 10.636 5.2318 10.1402L2.7318 7.14018C2.37824 6.71591 2.43556 6.08534 2.85984 5.73178C3.28412 5.37821 3.91468 5.43554 4.26825 5.85982Z' fill='${props.theme.accent.replace(
           "#",
           "%23"
         )}' /%3E%3C/svg%3E%0A"
@@ -755,6 +878,7 @@ mark {
 }
 
 .external-link {
+  cursor: pointer;
   display: inline-block;
   position: relative;
   top: 2px;
@@ -796,7 +920,7 @@ mark {
     font-weight: 500;
     text-decoration: none;
     flex-shrink: 0;
-    cursor: pointer;
+    cursor: var(--pointer);
     user-select: none;
     appearance: none !important;
     padding: 6px 8px;
@@ -861,6 +985,30 @@ mark {
     pre {
       display: none;
     }
+  }
+}
+
+.code-block.with-line-numbers {
+  pre {
+    padding-left: calc(var(--line-number-gutter-width, 0) * 1em + 1.5em);
+  }
+
+  &:after {
+    content: attr(data-line-numbers);
+    position: absolute;
+    left: 1em;
+    top: calc(1px + 0.75em);
+    width: calc(var(--line-number-gutter-width,0) * 1em + .25em);
+    word-break: break-all;
+    text-align: right;
+
+    font-family: ${props.theme.fontFamilyMono};
+    font-size: 13px;
+    line-height: 1.4em;
+    color: ${props.theme.textTertiary};
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
   }
 }
 
@@ -1034,7 +1182,7 @@ table {
   }
 
   th {
-    background: ${props.theme.tableHeaderBackground};
+    background: transparent;
   }
 
   td,
@@ -1229,12 +1377,13 @@ table {
 
   &:hover,
   &:focus {
-    cursor: pointer;
+    cursor: var(--pointer);
     color: ${props.theme.text};
     background: ${props.theme.secondaryBackground};
   }
 }
 
+.ProseMirror[contenteditable="true"]:focus-within,
 .ProseMirror-focused .block-menu-trigger,
 .block-menu-trigger:active,
 .block-menu-trigger:focus {
@@ -1272,15 +1421,25 @@ table {
   display: block;
 }
 
-ins {
-  background-color: #128a2929;
+del {
+  color: ${props.theme.slate};
+  text-decoration: strikethrough;
+}
+
+ins[data-operation-index] {
+  color: ${props.theme.textDiffInserted};
+  background-color: ${props.theme.textDiffInsertedBackground};
   text-decoration: none;
 }
 
-del {
-  background-color: ${props.theme.slateLight};
-  color: ${props.theme.slate};
-  text-decoration: strikethrough;
+del[data-operation-index] {
+  color: ${props.theme.textDiffDeleted};
+  background-color: ${props.theme.textDiffDeletedBackground};
+  text-decoration: none;
+
+  img {
+    opacity: .5;
+  }
 }
 
 @media print {
@@ -1315,6 +1474,7 @@ del {
 
 const EditorContainer = styled.div<Props>`
   ${style};
+  ${mathStyle};
 `;
 
 export default EditorContainer;

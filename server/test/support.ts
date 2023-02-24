@@ -1,12 +1,13 @@
 import TestServer from "fetch-test-server";
 import { v4 as uuidv4 } from "uuid";
 import { CollectionPermission } from "@shared/types";
-import { sequelize as db } from "@server/database/sequelize";
+import { sequelize } from "@server/database/sequelize";
 import { User, Document, Collection, Team } from "@server/models";
+import onerror from "@server/onerror";
 import webService from "@server/services/web";
 
 export const seed = async () => {
-  return db.transaction(async (transaction) => {
+  return sequelize.transaction(async (transaction) => {
     const team = await Team.create(
       {
         name: "Team",
@@ -102,33 +103,38 @@ export const seed = async () => {
 
 export function getTestServer() {
   const app = webService();
+  onerror(app);
   const server = new TestServer(app.callback());
 
   server.disconnect = async () => {
-    await db.close();
+    await sequelize.close();
     server.close();
   };
+
+  setupTestDatabase();
+  afterAll(server.disconnect);
 
   return server;
 }
 
-export function getTestDatabase() {
+export function setupTestDatabase() {
   const flush = async () => {
-    const sql = db.getQueryInterface();
-    const tables = Object.keys(db.models).map((model) => {
-      const n = db.models[model].getTableName();
+    const sql = sequelize.getQueryInterface();
+    const tables = Object.keys(sequelize.models).map((model) => {
+      const n = sequelize.models[model].getTableName();
       return (sql.queryGenerator as any).quoteTable(
         typeof n === "string" ? n : n.tableName
       );
     });
     const flushQuery = `TRUNCATE ${tables.join(", ")} CASCADE`;
 
-    await db.query(flushQuery);
+    await sequelize.query(flushQuery);
   };
 
   const disconnect = async () => {
-    await db.close();
+    await sequelize.close();
   };
 
-  return { flush, disconnect };
+  afterAll(disconnect);
+  beforeEach(flush);
 }

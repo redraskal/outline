@@ -11,7 +11,7 @@ import ArrowKeyNavigation from "~/components/ArrowKeyNavigation";
 import DelayedMount from "~/components/DelayedMount";
 import PlaceholderList from "~/components/List/Placeholder";
 import withStores from "~/components/withStores";
-import { dateToHeading } from "~/utils/dates";
+import { dateToHeading } from "~/utils/date";
 
 export interface PaginatedItem {
   id: string;
@@ -55,10 +55,13 @@ class PaginatedList<T extends PaginatedItem> extends React.Component<Props<T>> {
   isFetching = false;
 
   @observable
+  isFetchingInitial = !this.props.items?.length;
+
+  @observable
   fetchCounter = 0;
 
   @observable
-  renderCount: number = DEFAULT_PAGINATION_LIMIT;
+  renderCount = 15;
 
   @observable
   offset = 0;
@@ -85,6 +88,7 @@ class PaginatedList<T extends PaginatedItem> extends React.Component<Props<T>> {
     this.allowLoadMore = true;
     this.renderCount = DEFAULT_PAGINATION_LIMIT;
     this.isFetching = false;
+    this.isFetchingInitial = false;
     this.isFetchingMore = false;
   };
 
@@ -95,7 +99,7 @@ class PaginatedList<T extends PaginatedItem> extends React.Component<Props<T>> {
     }
     this.isFetching = true;
     const counter = ++this.fetchCounter;
-    const limit = DEFAULT_PAGINATION_LIMIT;
+    const limit = this.props.options?.limit ?? DEFAULT_PAGINATION_LIMIT;
     this.error = undefined;
 
     try {
@@ -112,6 +116,7 @@ class PaginatedList<T extends PaginatedItem> extends React.Component<Props<T>> {
       }
 
       this.renderCount += limit;
+      this.isFetchingInitial = false;
     } catch (err) {
       this.error = err;
     } finally {
@@ -159,7 +164,7 @@ class PaginatedList<T extends PaginatedItem> extends React.Component<Props<T>> {
     const showLoading =
       this.isFetching &&
       !this.isFetchingMore &&
-      (!items?.length || this.fetchCounter === 0);
+      (!items?.length || (this.fetchCounter <= 1 && this.isFetchingInitial));
 
     if (showLoading) {
       return (

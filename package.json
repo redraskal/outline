@@ -146,7 +146,7 @@
     "passport-slack-oauth2": "^1.1.1",
     "patch-package": "^6.5.1",
     "pg": "^8.8.0",
-    "pg-tsquery": "^8.4.0",
+    "pg-tsquery": "^8.4.1",
     "polished": "^4.2.2",
     "prosemirror-commands": "1.2.2",
     "prosemirror-dropcursor": "^1.6.1",

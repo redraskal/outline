@@ -2882,10 +2882,10 @@
   dependencies:
     "@types/koa" "*"
 
-"@types/koa-sslify@^4.0.3":
-  version "4.0.3"
-  resolved "https://registry.yarnpkg.com/@types/koa-sslify/-/koa-sslify-4.0.3.tgz#c0fe5a3abe9ec3a8ca9225b7c467b54f505c083b"
-  integrity sha512-FfbgV4Dex2FtnonU6uAA0BhEh+pGTWY63UkP14+StrlC0e3RNOGx6GZc3HMN3wzBRNchLhcnkyO7/hHLnx3bPw==
+"@types/koa-sslify@^4.0.6":
+  version "4.0.6"
+  resolved "https://registry.yarnpkg.com/@types/koa-sslify/-/koa-sslify-4.0.6.tgz#3d2f19e06653a31bebc240731efc3b8d314dd647"
+  integrity sha512-yPp3bND99D81iZ3k9HV4vEv1sFqdsYa/k9dKmXgb7W9UXuNrf54x+mYOzPEnHvhDBQQLGUyBDiW7lZ6DQadVIA==
   dependencies:
     "@types/koa" "*"
 

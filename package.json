@@ -128,7 +128,7 @@
     "lodash": "^4.17.21",
     "mammoth": "^1.4.19",
     "markdown-it": "^13.0.1",
-    "markdown-it-container": "^3.0.0",
+    "markdown-it-container": "^4.0.0",
     "markdown-it-emoji": "^2.0.0",
     "mermaid": "9.3.0",
     "mime-types": "^2.1.35",
